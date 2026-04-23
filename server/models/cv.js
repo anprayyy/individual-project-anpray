@@ -27,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
+      fullName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       title: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -75,19 +79,16 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
+      file: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       photoUrl: {
         type: DataTypes.STRING,
         allowNull: true,
-        defaultValue: "https://dummyimage.com/200x200",
         validate: {
           isUrl: {
             msg: "Photo must be valid",
-          },
-          notNull: {
-            msg: "PhotoUrl is required",
-          },
-          notEmpty: {
-            msg: "PhotoUrl is required",
           },
         },
       },

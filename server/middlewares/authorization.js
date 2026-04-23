@@ -3,7 +3,7 @@ const { CV, Experience, Payment } = require("../models");
 // CV
 const authorizationCV = async (req, res, next ) => {
     try {
-        if (req.user.role === "Admin") return (next);
+        if (req.user.role === "Admin") return next();
         
         const cv = await CV.findByPk(req.params.id);
         if(!cv) throw { name: "NotFound", message: "CV Not Found" };

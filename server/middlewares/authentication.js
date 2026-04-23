@@ -5,9 +5,9 @@ const authentication = async (req, res, next) => {
     try {
         const { authorization } = req.headers;
 
-        if(!authorization) (
+        if(!authorization) {
             throw {name: "Unauthorized", message: "Invalid token" };
-        )
+        }
 
         const rawToken = authorization.split(" ");
         const tokenType = rawToken[0];
@@ -36,7 +36,7 @@ const authentication = async (req, res, next) => {
 
         next();
     } catch (err) {
-        next();
+        next(err);
     }
 };
 
