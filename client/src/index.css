@@ -1,0 +1,65 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: "Space Grotesk", sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.font-display {
+  font-family: "DM Serif Display", serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes softFloat {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fadeUp 0.6s ease-out both;
+}
+
+.floaty {
+  animation: softFloat 7s ease-in-out infinite;
+}
+
+.dashboard-bg {
+  background:
+    radial-gradient(circle at top left, #e0f2fe 0%, #f8fafc 45%),
+    radial-gradient(circle at 85% 10%, #fee2e2 0%, rgba(254, 242, 242, 0) 45%),
+    linear-gradient(135deg, #fef9c3 0%, rgba(254, 249, 195, 0) 35%);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(14px);
+}
+
+.ring-soft {
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.2),
+    0 12px 30px rgba(15, 23, 42, 0.08);
+}
