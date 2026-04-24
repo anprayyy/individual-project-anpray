@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import axios from "axios";
 import { url } from "../constants/url";
+import { showToast } from "../utils/toast";
 
 export default function CVForm() {
   const navigate = useNavigate();
@@ -109,7 +110,7 @@ export default function CVForm() {
       setForm((prev) => ({ ...prev, photoUrl: data.secure_url }));
       setPreview(data.secure_url);
     } catch (err) {
-      console.log(err);
+      showToast("Gagal upload foto", "error");
     } finally {
       setUploading(false);
     }
@@ -152,9 +153,11 @@ export default function CVForm() {
         { cvId, experiences: normalizedExperiences },
         config,
       );
+      showToast("CV berhasil disimpan");
       navigate(`/cvs/${cvId}`);
     } catch (err) {
-      console.log(err);
+      const message = err.response?.data?.message || "Gagal menyimpan CV";
+      showToast(message, "error");
     }
   };
 

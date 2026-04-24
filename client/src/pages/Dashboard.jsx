@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router";
 import axios from "axios";
-import Toastify from "toastify-js";
-import "toastify-js/src/toastify.css";
 import { url } from "../constants/url";
+import { showToast } from "../utils/toast";
 
 export default function Dashboard() {
   const [cvs, setCvs] = useState([]);
@@ -32,25 +31,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchCVs();
   }, []);
-
-  const showToast = (message, type = "success") => {
-    const isSuccess = type === "success";
-    Toastify({
-      text: message,
-      duration: 2500,
-      gravity: "top",
-      position: "right",
-      close: true,
-      style: {
-        background: isSuccess
-          ? "linear-gradient(135deg, #16a34a, #22c55e)"
-          : "linear-gradient(135deg, #dc2626, #f43f5e)",
-        boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
-        borderRadius: "12px",
-        fontWeight: 600,
-      },
-    }).showToast();
-  };
 
   const handleDelete = async (e, cvId) => {
     e.preventDefault();
@@ -101,7 +81,8 @@ export default function Dashboard() {
       showToast("PDF berhasil diupload");
       navigate(`/cvs/${data.id}`);
     } catch (error) {
-      showToast("Gagal memproses PDF", "error");
+      const message = error.response?.data?.message || "Gagal memproses PDF";
+      showToast(message, "error");
     } finally {
       setUploading(false);
       e.target.value = "";

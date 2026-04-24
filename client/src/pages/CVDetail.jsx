@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import axios from "axios";
 import { url } from "../constants/url";
 import CVPreview from "../components/CVPreview";
+import { showToast } from "../utils/toast";
 
 export default function CVDetail() {
   const { id } = useParams();
@@ -28,7 +29,8 @@ export default function CVDetail() {
       });
       setCv(data);
     } catch (err) {
-      console.log(err);
+      const message = err.response?.data?.message || "Gagal memuat CV";
+      showToast(message, "error");
     }
   };
 
@@ -37,17 +39,22 @@ export default function CVDetail() {
   }, []);
 
   const handleDownload = async () => {
-    const res = await axios.get(`${url}/cvs/${id}/download`, {
-      responseType: "blob",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      },
-    });
-    const fileURL = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement("a");
-    link.href = fileURL;
-    link.download = `cv-${id}.pdf`;
-    link.click();
+    try {
+      const res = await axios.get(`${url}/cvs/${id}/download`, {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
+      const fileURL = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `cv-${id}.pdf`;
+      link.click();
+    } catch (err) {
+      const message = err.response?.data?.message || "Gagal download PDF";
+      showToast(message, "error");
+    }
   };
 
   // Review CV yang ada di app (via puppeteer)
@@ -64,6 +71,8 @@ export default function CVDetail() {
       setReview(data.review);
     } catch (err) {
       setReview("Gagal mengambil review. Coba lagi.");
+      const message = err.response?.data?.message || "Gagal mengambil review";
+      showToast(message, "error");
     } finally {
       setLoadingReview(false);
     }

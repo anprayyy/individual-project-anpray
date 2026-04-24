@@ -1,12 +1,29 @@
-const { User, CV, Experience, Payment } = require("../models");
+const { User, CV, Experience } = require("../models");
 const cloudinary = require("../config/cloudinary");
 const puppeteer = require("puppeteer");
+const crypto = require("crypto");
 const { reviewCV, extractCVFromPDF } = require("../helpers/gemini");
 const { generatePDFBuffer } = require("../helpers/generatePDF");
 
 const PDF_CACHE_TTL_MS = 5 * 60 * 1000;
 const PDF_CACHE_MAX = 50;
 const pdfCache = new Map();
+
+const UPLOAD_RATE_WINDOW_MS = 60 * 1000;
+const UPLOAD_RATE_MAX = 1;
+const uploadRateCache = new Map();
+
+const EXTRACT_CACHE_TTL_MS = 10 * 60 * 1000;
+const EXTRACT_CACHE_MAX = 50;
+const extractCache = new Map();
+
+const REVIEW_RATE_WINDOW_MS = 60 * 1000;
+const REVIEW_RATE_MAX = 1;
+const reviewRateCache = new Map();
+
+const REVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+const REVIEW_CACHE_MAX = 30;
+const reviewCache = new Map();
 
 class CvController {
   static async createCV(req, res, next) {
@@ -165,6 +182,15 @@ class CvController {
 
       res.status(200).json({ review });
     } catch (err) {
+      const status = err?.status || err?.error?.code;
+      if (status === 429) {
+        next({
+          name: "TooManyRequests",
+          message:
+            "Kuota Gemini habis. Coba lagi beberapa saat atau tambah billing.",
+        });
+        return;
+      }
       next(err);
     }
   }
@@ -175,20 +201,52 @@ class CvController {
       }
 
       const pdfBuffer = Buffer.from(req.file.buffer);
-      const aiText = await extractCVFromPDF(pdfBuffer);
+      const now = Date.now();
+      const hash = crypto.createHash("sha256").update(pdfBuffer).digest("hex");
+      const cacheKey = `${req.user.id}:${hash}`;
+      const cached = extractCache.get(cacheKey);
 
       let extracted;
-      try {
-        extracted = JSON.parse(aiText);
-      } catch (parseErr) {
-        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
+      if (cached && now - cached.createdAt < EXTRACT_CACHE_TTL_MS) {
+        extracted = cached.data;
+      } else {
+        const rateKey = String(req.user.id);
+        const rateState = uploadRateCache.get(rateKey);
+        if (!rateState || now > rateState.resetAt) {
+          uploadRateCache.set(rateKey, {
+            count: 1,
+            resetAt: now + UPLOAD_RATE_WINDOW_MS,
+          });
+        } else if (rateState.count >= UPLOAD_RATE_MAX) {
+          const waitMs = Math.max(rateState.resetAt - now, 0);
+          const waitSec = Math.ceil(waitMs / 1000);
           throw {
-            name: "BadRequest",
-            message: "AI response is not valid JSON",
+            name: "TooManyRequests",
+            message: `Terlalu sering upload. Coba lagi dalam ${waitSec} detik.`,
           };
+        } else {
+          rateState.count += 1;
         }
-        extracted = JSON.parse(jsonMatch[0]);
+
+        const aiText = await extractCVFromPDF(pdfBuffer);
+        try {
+          extracted = JSON.parse(aiText);
+        } catch (parseErr) {
+          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw {
+              name: "BadRequest",
+              message: "AI response is not valid JSON",
+            };
+          }
+          extracted = JSON.parse(jsonMatch[0]);
+        }
+
+        extractCache.set(cacheKey, { createdAt: now, data: extracted });
+        if (extractCache.size > EXTRACT_CACHE_MAX) {
+          const oldestKey = extractCache.keys().next().value;
+          extractCache.delete(oldestKey);
+        }
       }
 
       const normalizeDate = (value) => {
@@ -250,6 +308,16 @@ class CvController {
 
       res.status(201).json(created);
     } catch (err) {
+      console.error("createCVFromUpload error:", err);
+      const status = err?.status || err?.error?.code;
+      if (status === 429) {
+        next({
+          name: "TooManyRequests",
+          message:
+            "Kuota Gemini habis. Coba lagi beberapa saat atau tambah billing.",
+        });
+        return;
+      }
       next(err);
     }
   }
@@ -642,15 +710,56 @@ class CvController {
 
       if (!cv) throw { name: "NotFound", message: "CV Not Found" };
 
+      const now = Date.now();
+      const reviewKey = `${cv.id}:${cv.updatedAt?.toISOString()}`;
+      const cached = reviewCache.get(reviewKey);
+      if (cached && now - cached.createdAt < REVIEW_CACHE_TTL_MS) {
+        res.status(200).json({ review: cached.review });
+        return;
+      }
+
+      const rateKey = String(req.user.id);
+      const rateState = reviewRateCache.get(rateKey);
+      if (!rateState || now > rateState.resetAt) {
+        reviewRateCache.set(rateKey, {
+          count: 1,
+          resetAt: now + REVIEW_RATE_WINDOW_MS,
+        });
+      } else if (rateState.count >= REVIEW_RATE_MAX) {
+        const waitMs = Math.max(rateState.resetAt - now, 0);
+        const waitSec = Math.ceil(waitMs / 1000);
+        throw {
+          name: "TooManyRequests",
+          message: `Terlalu sering review. Coba lagi dalam ${waitSec} detik.`,
+        };
+      } else {
+        rateState.count += 1;
+      }
+
       // Generate PDF buffer (reuse logic dari downloadCV)
       const pdfBuffer = await generatePDFBuffer(cv); // pisahkan jadi helper
 
       // Kirim ke Gemini
       const review = await reviewCV(pdfBuffer);
 
+      reviewCache.set(reviewKey, { createdAt: now, review });
+      if (reviewCache.size > REVIEW_CACHE_MAX) {
+        const oldestKey = reviewCache.keys().next().value;
+        reviewCache.delete(oldestKey);
+      }
+
       res.status(200).json({ review });
     } catch (err) {
       console.log("ERROR REVIEW:", err); // tambah ini
+      const status = err?.status || err?.error?.code;
+      if (status === 429) {
+        next({
+          name: "TooManyRequests",
+          message:
+            "Kuota Gemini habis. Coba lagi beberapa saat atau tambah billing.",
+        });
+        return;
+      }
       next(err);
     }
   }

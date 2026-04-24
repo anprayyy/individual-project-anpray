@@ -1,4 +1,4 @@
-const { User, CV, Experience, Payment } = require("../models");
+const { User, CV, Experience } = require("../models");
 
 class ExperienceController {
   static async createExperience(req, res, next) {
@@ -80,18 +80,47 @@ class ExperienceController {
     try {
       const { cvId, experiences } = req.body;
 
+      if (!cvId) {
+        throw { name: "BadRequest", message: "CV id is required" };
+      }
+
+      const cv = await CV.findByPk(cvId);
+      if (!cv) {
+        throw { name: "NotFound", message: "CV Not Found" };
+      }
+
+      if (req.user.role !== "Admin" && cv.userId !== req.user.id) {
+        throw { name: "Forbidden", message: "You're not authorized" };
+      }
+
       await Experience.destroy({ where: { cvId } });
 
-      const data = experiences.map((exp) => ({
-        ...exp,
-        cvId,
-      }));
+      const raw = Array.isArray(experiences) ? experiences : [];
+      const data = raw
+        .map((exp) => ({
+          company: exp.company?.trim(),
+          position: exp.position?.trim(),
+          description: exp.description?.trim(),
+          startDate: exp.startDate || null,
+          endDate: exp.endDate || exp.startDate || null,
+          cvId,
+        }))
+        .filter(
+          (exp) =>
+            exp.company &&
+            exp.position &&
+            exp.description &&
+            exp.startDate &&
+            exp.endDate,
+        );
 
       if (data.length > 0) {
         await Experience.bulkCreate(data);
+        res.status(201).json({ message: "Experiences created" });
+        return;
       }
 
-      res.status(201).json({ message: "Experiences created" });
+      res.status(200).json({ message: "No experiences to save" });
     } catch (err) {
       next(err);
     }

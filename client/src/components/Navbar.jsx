@@ -1,10 +1,13 @@
 import { Link, useNavigate } from "react-router";
+import { useDispatch } from "react-redux";
+import { logout } from "../store/slices/authSlice";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
+    dispatch(logout());
     navigate("/login");
   };
 
