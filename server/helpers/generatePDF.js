@@ -5,8 +5,7 @@ const generatePDFBuffer = async (cv) => {
   let photoBase64 = "";
   if (cv.photoUrl) {
     try {
-      const fetchFn = global.fetch || (await import("node-fetch")).default;
-      const response = await fetchFn(cv.photoUrl);
+      const response = await fetch(cv.photoUrl);
       const buffer = Buffer.from(await response.arrayBuffer());
       const mimeType = response.headers.get("content-type") || "image/jpeg";
       photoBase64 = `data:${mimeType};base64,${buffer.toString("base64")}`;
