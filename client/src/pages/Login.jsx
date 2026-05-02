@@ -66,16 +66,16 @@ export default function Login() {
       <div className="absolute top-10 -right-16 h-80 w-80 rounded-full bg-sky-400/30 blur-[160px]" />
       <div className="absolute bottom-0 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-indigo-400/20 blur-[150px]" />
 
-      <div className="relative max-w-6xl mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
-          <div className="space-y-6">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
+          <div className="space-y-6 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-white/70">
               CV Studio
             </div>
             <h1 className="text-4xl md:text-5xl font-display leading-tight">
               Masuk dan lanjutkan cerita kariermu.
             </h1>
-            <p className="text-base text-white/70 max-w-xl">
+            <p className="text-base text-white/70 max-w-xl lg:mx-0 mx-auto">
               Bangun CV yang terasa personal, modern, dan siap kirim. Simpan
               semua versi, edit cepat, dan langsung unduh PDF.
             </p>
@@ -97,14 +97,14 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="bg-white/95 text-slate-900 rounded-3xl p-8 shadow-2xl shadow-slate-900/30 border border-white/40">
+          <div className="bg-white/95 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-900/30 border border-white/40 w-full">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Welcome back
                 </p>
                 <h2 className="text-2xl font-display text-slate-900">
-                  Login ke CV Builder
+                  Login ke CV Studio
                 </h2>
               </div>
               <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xl">
@@ -164,7 +164,7 @@ export default function Login() {
                   Login with GitHub
                 </button>
 
-                <div className="flex justify-center">
+                <div className="flex justify-center overflow-hidden">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}

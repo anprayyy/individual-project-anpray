@@ -66,12 +66,13 @@ class AuthController {
   static async githubLogin(req, res, next) {
     try {
       const clientId = process.env.GITHUB_CLIENT_ID;
-      const redirectUri =
-        process.env.GITHUB_CALLBACK_URL ||
-        "http://localhost:3000/auth/github/callback";
+      const redirectUri = process.env.GITHUB_CALLBACK_URL;
 
-      if (!clientId) {
-        throw { name: "BadRequest", message: "GitHub client ID missing" };
+      if (!clientId || !redirectUri) {
+        throw {
+          name: "BadRequest",
+          message: "GitHub client ID or callback URL missing",
+        };
       }
 
       const params = new URLSearchParams({
@@ -97,12 +98,13 @@ class AuthController {
 
       const clientId = process.env.GITHUB_CLIENT_ID;
       const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-      const redirectUri =
-        process.env.GITHUB_CALLBACK_URL ||
-        "http://localhost:3000/auth/github/callback";
+      const redirectUri = process.env.GITHUB_CALLBACK_URL;
 
-      if (!clientId || !clientSecret) {
-        throw { name: "BadRequest", message: "GitHub OAuth env missing" };
+      if (!clientId || !clientSecret || !redirectUri) {
+        throw {
+          name: "BadRequest",
+          message: "GitHub OAuth env missing",
+        };
       }
 
       const tokenRes = await axios.post(
@@ -158,7 +160,10 @@ class AuthController {
         role: user.role,
       });
 
-      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      const clientUrl = process.env.CLIENT_URL;
+      if (!clientUrl) {
+        throw { name: "BadRequest", message: "Client URL missing" };
+      }
       res.redirect(`${clientUrl}/login?token=${access_token}`);
     } catch (err) {
       next(err);
@@ -168,12 +173,13 @@ class AuthController {
   static async googleLogin(req, res, next) {
     try {
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      const redirectUri =
-        process.env.GOOGLE_CALLBACK_URL ||
-        "http://localhost:3000/auth/google/callback";
+      const redirectUri = process.env.GOOGLE_CALLBACK_URL;
 
-      if (!clientId) {
-        throw { name: "BadRequest", message: "Google client ID missing" };
+      if (!clientId || !redirectUri) {
+        throw {
+          name: "BadRequest",
+          message: "Google client ID or callback URL missing",
+        };
       }
 
       const params = new URLSearchParams({
@@ -201,11 +207,9 @@ class AuthController {
 
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      const redirectUri =
-        process.env.GOOGLE_CALLBACK_URL ||
-        "http://localhost:3000/auth/google/callback";
+      const redirectUri = process.env.GOOGLE_CALLBACK_URL;
 
-      if (!clientId || !clientSecret) {
+      if (!clientId || !clientSecret || !redirectUri) {
         throw { name: "BadRequest", message: "Google OAuth env missing" };
       }
 
@@ -251,7 +255,10 @@ class AuthController {
         role: user.role,
       });
 
-      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      const clientUrl = process.env.CLIENT_URL;
+      if (!clientUrl) {
+        throw { name: "BadRequest", message: "Client URL missing" };
+      }
       res.redirect(`${clientUrl}/login?token=${access_token}`);
     } catch (err) {
       next(err);

@@ -183,7 +183,7 @@ export default function CVForm() {
       <div className="relative overflow-hidden">
         <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-amber-100 blur-3xl opacity-70 floaty" />
         <div className="absolute top-10 -right-24 h-72 w-72 rounded-full bg-cyan-100 blur-3xl opacity-70" />
-        <div className="max-w-6xl mx-auto px-4 py-10 relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 relative">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
             <div>
@@ -429,7 +429,7 @@ export default function CVForm() {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="text-xs font-medium text-gray-400 mb-1 block">
                               Company
@@ -456,7 +456,7 @@ export default function CVForm() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="text-xs font-medium text-gray-400 mb-1 block">
                               Start date
@@ -603,7 +603,7 @@ export default function CVForm() {
                         {form.summary}
                       </p>
                     )}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div className="bg-gray-50 rounded-xl p-3">
                         <p className="text-xs text-gray-400 mb-0.5">
                           Experience
