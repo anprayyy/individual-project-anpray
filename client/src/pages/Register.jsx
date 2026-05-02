@@ -32,9 +32,9 @@ export default function Register() {
       <div className="absolute top-6 right-0 h-80 w-80 rounded-full bg-rose-400/25 blur-[160px]" />
       <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-indigo-400/20 blur-[150px]" />
 
-      <div className="relative max-w-6xl mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
-          <div className="bg-white/95 text-slate-900 rounded-3xl p-8 shadow-2xl shadow-slate-900/30 border border-white/40 order-2 lg:order-1">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] items-center">
+          <div className="bg-white/95 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-900/30 border border-white/40 order-2 lg:order-1 w-full">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -113,14 +113,14 @@ export default function Register() {
             </p>
           </div>
 
-          <div className="space-y-6 order-1 lg:order-2">
+          <div className="space-y-6 order-1 lg:order-2 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-white/70">
               CV Launch
             </div>
             <h1 className="text-4xl md:text-5xl font-display leading-tight">
               Mulai membuat CV yang terasa premium.
             </h1>
-            <p className="text-base text-white/70 max-w-xl">
+            <p className="text-base text-white/70 max-w-xl lg:mx-0 mx-auto">
               Buat profil profesional dengan layout modern, ringkas, dan mudah
               di-scan oleh recruiter.
             </p>

@@ -95,9 +95,9 @@ export default function Dashboard() {
         <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-sky-200/60 blur-3xl" />
         <div className="absolute top-10 right-6 h-64 w-64 rounded-full bg-rose-200/60 blur-3xl" />
         <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-amber-100/70 blur-3xl" />
-        <div className="p-8 max-w-6xl mx-auto relative">
+        <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-6xl mx-auto relative">
           {/* HERO */}
-          <div className="glass-panel ring-soft rounded-3xl border border-white/60 p-6 md:p-8 mb-8">
+          <div className="glass-panel ring-soft rounded-3xl border border-white/60 p-5 sm:p-6 md:p-8 mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white text-xs uppercase tracking-[0.2em]">
@@ -151,7 +151,7 @@ export default function Dashboard() {
           />
 
           {/* STATS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
             {[
               {
                 label: "Total CV",
@@ -230,7 +230,7 @@ export default function Dashboard() {
           ) : (
             /* LIST CV */
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                     CV Library
@@ -249,7 +249,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {cvs.map((cv) => {
                   const displayName = (cv.fullName || "").trim();
                   const roleTitle = (cv.title || "").trim();

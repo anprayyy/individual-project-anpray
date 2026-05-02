@@ -85,7 +85,7 @@ export default function CVDetail() {
       <div className="relative overflow-hidden">
         <div className="absolute -top-20 -left-16 h-72 w-72 rounded-full bg-blue-100 blur-3xl opacity-70" />
         <div className="absolute top-12 -right-20 h-72 w-72 rounded-full bg-rose-100 blur-3xl opacity-70" />
-        <div className="p-8 max-w-6xl mx-auto relative">
+        <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-6xl mx-auto relative">
           {/* HEADER */}
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
             <div>
