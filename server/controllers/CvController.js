@@ -710,11 +710,35 @@ class CvController {
 
       if (!cv) throw { name: "NotFound", message: "CV Not Found" };
 
+      const now = Date.now();
+      const cacheKey = String(cv.id);
+      const cached = reviewCache.get(cacheKey);
+      if (
+        cached &&
+        cached.updatedAt === cv.updatedAt?.toISOString() &&
+        now - cached.createdAt < REVIEW_CACHE_TTL_MS
+      ) {
+        res.status(200).json({ review: cached.review });
+        return;
+      }
+
       // Generate PDF buffer
       const pdfBuffer = await generatePDFBuffer(cv);
 
       // Kirim ke AI (Gemini)
       const review = await reviewCV(pdfBuffer);
+
+      reviewCache.set(cacheKey, {
+        updatedAt: cv.updatedAt?.toISOString(),
+        createdAt: now,
+        review,
+      });
+      if (reviewCache.size > REVIEW_CACHE_MAX) {
+        const oldestKey = Array.from(reviewCache.entries()).sort(
+          (a, b) => a[1].createdAt - b[1].createdAt,
+        )[0]?.[0];
+        if (oldestKey) reviewCache.delete(oldestKey);
+      }
 
       res.status(200).json({ review });
     } catch (err) {
