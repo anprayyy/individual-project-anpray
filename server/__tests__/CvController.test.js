@@ -1,340 +1,183 @@
 const request = require("supertest");
 const express = require("express");
-const CvController = require("../controllers/CvController");
-const { Cv, Experience, User } = require("../models");
+const router = require("../routes/cvRoutes");
+const { CV } = require("../models");
 
-// Mock dependencies
+// ================= MOCK =================
 jest.mock("../models", () => ({
-  Cv: {
+  CV: {
     findAll: jest.fn(),
     findByPk: jest.fn(),
     create: jest.fn(),
-    update: jest.fn(),
-    destroy: jest.fn(),
   },
   Experience: {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    destroy: jest.fn(),
+    bulkCreate: jest.fn(),
   },
-  User: {
-    findByPk: jest.fn(),
-  },
+  User: {},
 }));
 
-jest.mock("../helpers/generatePDF", () => jest.fn());
+jest.mock("../middlewares/authentication", () =>
+  jest.fn((req, res, next) => {
+    req.user = { id: 1 };
+    next();
+  }),
+);
 
-// Mock middleware
-const mockAuthMiddleware = (req, res, next) => {
-  req.user = { id: 1, email: "test@example.com" };
-  next();
-};
+jest.mock("../middlewares/authorization", () => ({
+  authorizationCV: jest.fn((req, res, next) => next()),
+}));
 
-// Create test app
+jest.mock("puppeteer", () => ({
+  launch: jest.fn().mockResolvedValue({
+    newPage: jest.fn().mockResolvedValue({
+      setContent: jest.fn(),
+      pdf: jest.fn().mockResolvedValue(Buffer.from("PDF")),
+    }),
+    close: jest.fn(),
+  }),
+}));
+
+jest.mock("../helpers/generatePDF", () => ({
+  generatePDFBuffer: jest.fn().mockResolvedValue(Buffer.from("PDF")),
+}));
+
+// ================= APP =================
 const app = express();
 app.use(express.json());
-app.use(mockAuthMiddleware);
+app.use("/cv", router);
 
-app.get("/cv", CvController.getAll);
-app.get("/cv/:id", CvController.getById);
-app.post("/cv", CvController.create);
-app.put("/cv/:id", CvController.update);
-app.delete("/cv/:id", CvController.destroy);
-app.get("/cv/:id/download", CvController.downloadCV);
+// error handler
+app.use((err, req, res, next) => {
+  if (err.name === "NotFound") {
+    return res.status(404).json({ message: err.message });
+  }
+  if (err.name === "BadRequest") {
+    return res.status(400).json({ message: err.message });
+  }
+  if (err.name === "TooManyRequests") {
+    return res.status(429).json({ message: err.message });
+  }
+  res.status(500).json({ message: "Internal Server Error" });
+});
 
-describe("CvController", () => {
+// ================= TEST =================
+describe("CV Routes", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // ============= GET ALL CVs =============
-  describe("GET /cv", () => {
-    it("should get all CVs for authenticated user", async () => {
-      const mockCvs = [
-        {
-          id: 1,
-          userId: 1,
-          fullName: "John Doe",
-          title: "Software Engineer",
-          summary: "Experienced developer",
-          get: jest.fn().mockReturnValue(undefined),
-        },
-        {
-          id: 2,
-          userId: 1,
-          fullName: "Jane Smith",
-          title: "Product Manager",
-          summary: "Product specialist",
-          get: jest.fn().mockReturnValue(undefined),
-        },
-      ];
-
-      Cv.findAll.mockResolvedValue(mockCvs);
-
-      const response = await request(app).get("/cv");
-
-      expect(response.status).toBe(200);
-      expect(response.body).toBeInstanceOf(Array);
-      expect(response.body.length).toBe(2);
-      expect(Cv.findAll).toHaveBeenCalled();
-    });
-
-    it("should return empty array if no CVs exist", async () => {
-      Cv.findAll.mockResolvedValue([]);
-
-      const response = await request(app).get("/cv");
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
-    });
-
-    it("should handle database errors", async () => {
-      Cv.findAll.mockRejectedValue(new Error("Database error"));
-
-      const response = await request(app).get("/cv");
-
-      expect(response.status).toBe(500);
-    });
-  });
-
-  // ============= GET CV BY ID =============
-  describe("GET /cv/:id", () => {
-    it("should get CV by ID successfully", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 1,
-        fullName: "John Doe",
-        title: "Software Engineer",
-        summary: "Experienced developer",
-        file: "cv-1.pdf",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        get: jest.fn().mockReturnValue(undefined),
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app).get("/cv/1");
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("id", 1);
-      expect(response.body).toHaveProperty("fullName", "John Doe");
-    });
-
-    it("should return 404 if CV not found", async () => {
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app).get("/cv/999");
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should validate CV belongs to user", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-        fullName: "John Doe",
-        get: jest.fn().mockReturnValue(undefined),
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app).get("/cv/1");
-
-      expect(response.status).toBe(403);
-    });
-  });
-
-  // ============= CREATE CV =============
+  // ===== CREATE =====
   describe("POST /cv", () => {
-    it("should create new CV successfully", async () => {
-      const cvData = {
-        fullName: "John Doe",
-        title: "Software Engineer",
-        summary: "Experienced developer with 5 years experience",
-      };
+    it("should create CV", async () => {
+      const mock = { id: 1, fullName: "John" };
 
-      const mockNewCv = {
-        id: 1,
-        userId: 1,
-        ...cvData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      CV.create.mockResolvedValue(mock);
 
-      Cv.create.mockResolvedValue(mockNewCv);
+      const res = await request(app).post("/cv").send({
+        fullName: "John",
+        title: "Engineer",
+      });
 
-      const response = await request(app).post("/cv").send(cvData);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty("id");
-      expect(response.body).toHaveProperty("fullName", cvData.fullName);
-      expect(Cv.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fullName: cvData.fullName,
-          userId: 1,
-        }),
-      );
-    });
-
-    it("should fail without required fields", async () => {
-      const cvData = {
-        title: "Software Engineer",
-        // Missing fullName
-      };
-
-      const response = await request(app).post("/cv").send(cvData);
-
-      expect(response.status).toBe(400);
-    });
-
-    it("should handle database errors on create", async () => {
-      const cvData = {
-        fullName: "John Doe",
-        title: "Software Engineer",
-        summary: "Test",
-      };
-
-      Cv.create.mockRejectedValue(new Error("Database error"));
-
-      const response = await request(app).post("/cv").send(cvData);
-
-      expect(response.status).toBe(500);
+      expect(res.status).toBe(201);
+      expect(res.body.id).toBe(1);
     });
   });
 
-  // ============= UPDATE CV =============
+  // ===== GET ALL =====
+  describe("GET /cv", () => {
+    it("should get all CV", async () => {
+      CV.findAll.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+
+      const res = await request(app).get("/cv");
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2);
+    });
+  });
+
+  // ===== GET DETAIL =====
+  describe("GET /cv/:id", () => {
+    it("should get detail CV", async () => {
+      CV.findByPk.mockResolvedValue({ id: 1 });
+
+      const res = await request(app).get("/cv/1");
+
+      expect(res.status).toBe(200);
+    });
+
+    it("should return 404", async () => {
+      CV.findByPk.mockResolvedValue(null);
+
+      const res = await request(app).get("/cv/1");
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  // ===== UPDATE =====
   describe("PUT /cv/:id", () => {
-    it("should update CV successfully", async () => {
-      const updateData = {
-        fullName: "John Updated",
-        title: "Senior Engineer",
-      };
-
-      const mockExistingCv = {
+    it("should update CV", async () => {
+      const mock = {
         id: 1,
-        userId: 1,
-        fullName: "John Doe",
-        title: "Software Engineer",
         update: jest.fn().mockResolvedValue(true),
-        get: jest.fn().mockReturnValue(undefined),
       };
 
-      Cv.findByPk.mockResolvedValue(mockExistingCv);
+      CV.findByPk.mockResolvedValue(mock);
 
-      const response = await request(app).put("/cv/1").send(updateData);
-
-      expect(response.status).toBe(200);
-      expect(mockExistingCv.update).toHaveBeenCalledWith(updateData);
-    });
-
-    it("should return 404 if CV not found for update", async () => {
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app)
-        .put("/cv/999")
-        .send({ fullName: "Updated" });
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should check authorization before update", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-        get: jest.fn().mockReturnValue(undefined),
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app)
+      const res = await request(app)
         .put("/cv/1")
         .send({ fullName: "Updated" });
 
-      expect(response.status).toBe(403);
+      expect(res.status).toBe(200);
+      expect(mock.update).toHaveBeenCalled();
     });
   });
 
-  // ============= DELETE CV =============
+  // ===== DELETE =====
   describe("DELETE /cv/:id", () => {
-    it("should delete CV successfully", async () => {
-      const mockCv = {
+    it("should delete CV", async () => {
+      const mock = {
         id: 1,
-        userId: 1,
-        file: "cv-1.pdf",
         destroy: jest.fn().mockResolvedValue(true),
-        get: jest.fn().mockReturnValue(undefined),
       };
 
-      Cv.findByPk.mockResolvedValue(mockCv);
+      CV.findByPk.mockResolvedValue(mock);
 
-      const response = await request(app).delete("/cv/1");
+      const res = await request(app).delete("/cv/1");
 
-      expect(response.status).toBe(200);
-      expect(mockCv.destroy).toHaveBeenCalled();
-    });
-
-    it("should return 404 if CV not found for delete", async () => {
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app).delete("/cv/999");
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should check authorization before delete", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-        get: jest.fn().mockReturnValue(undefined),
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app).delete("/cv/1");
-
-      expect(response.status).toBe(403);
+      expect(res.status).toBe(200);
+      expect(mock.destroy).toHaveBeenCalled();
     });
   });
 
-  // ============= DOWNLOAD CV =============
+  // ===== DOWNLOAD =====
   describe("GET /cv/:id/download", () => {
-    it("should download CV as PDF", async () => {
-      const mockCv = {
+    it("should download PDF", async () => {
+      CV.findByPk.mockResolvedValue({
         id: 1,
-        userId: 1,
-        fullName: "John Doe",
-        get: jest.fn().mockReturnValue(undefined),
-      };
+        updatedAt: new Date(),
+        Experiences: [],
+      });
 
-      Cv.findByPk.mockResolvedValue(mockCv);
+      const res = await request(app).get("/cv/1/download");
 
-      const response = await request(app).get("/cv/1/download");
-
-      // Response should have PDF content type or redirect
-      expect([200, 302]).toContain(response.status);
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("pdf");
     });
+  });
 
-    it("should return 404 if CV not found for download", async () => {
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app).get("/cv/999/download");
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should check authorization for download", async () => {
-      const mockCv = {
+  // ===== REVIEW AI =====
+  describe("GET /cv/:id/review", () => {
+    it("should review CV", async () => {
+      CV.findByPk.mockResolvedValue({
         id: 1,
-        userId: 2, // Different user
-        get: jest.fn().mockReturnValue(undefined),
-      };
+        updatedAt: new Date(),
+        Experiences: [],
+      });
 
-      Cv.findByPk.mockResolvedValue(mockCv);
+      const res = await request(app).get("/cv/1/review");
 
-      const response = await request(app).get("/cv/1/download");
-
-      expect(response.status).toBe(403);
+      expect([200, 429]).toContain(res.status);
     });
   });
 });

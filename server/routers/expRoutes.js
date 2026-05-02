@@ -4,7 +4,6 @@ const { authorizationExperience } = require("../middlewares/authorization");
 const ExperienceController = require("../controllers/ExperienceController");
 
 router.use(authentication);
-
 router.post("/", ExperienceController.createExperience);
 router.post("/bulk", ExperienceController.bulkCreate);
 router.get("/cv/:cvId", ExperienceController.getExperienceByCV);
