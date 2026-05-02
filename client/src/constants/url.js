@@ -1,1 +1,1 @@
-export const url = "http://localhost:3000";
+export const url = "https://hck-94-p2-gc01-anang.anpray.my.id";

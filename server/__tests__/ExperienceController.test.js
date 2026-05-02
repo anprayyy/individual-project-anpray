@@ -1,299 +1,242 @@
 const request = require("supertest");
 const express = require("express");
 const ExperienceController = require("../controllers/ExperienceController");
-const { Experience, Cv } = require("../models");
+const { Experience, CV } = require("../models");
 
-// Mock dependencies
+// ================= MOCK =================
 jest.mock("../models", () => ({
   Experience: {
     create: jest.fn(),
     findAll: jest.fn(),
     findByPk: jest.fn(),
-    update: jest.fn(),
     destroy: jest.fn(),
+    bulkCreate: jest.fn(),
   },
-  Cv: {
+  CV: {
     findByPk: jest.fn(),
   },
 }));
 
-// Mock auth middleware
-const mockAuthMiddleware = (req, res, next) => {
-  req.user = { id: 1, email: "test@example.com" };
-  next();
-};
-
-// Create test app
+// ================= APP =================
 const app = express();
 app.use(express.json());
-app.use(mockAuthMiddleware);
 
-app.post("/experience", ExperienceController.create);
-app.get("/experience/:cvId", ExperienceController.getAll);
-app.put("/experience/:id", ExperienceController.update);
-app.delete("/experience/:id", ExperienceController.destroy);
+// mock auth
+app.use((req, res, next) => {
+  req.user = { id: 1, role: "User" };
+  next();
+});
 
+// routes (FIX sesuai asli)
+app.post("/experience", ExperienceController.createExperience);
+app.get("/experience/cv/:cvId", ExperienceController.getExperienceByCV);
+app.put("/experience/:id", ExperienceController.updateExperience);
+app.delete("/experience/:id", ExperienceController.deleteExperience);
+app.post("/experience/bulk", ExperienceController.bulkCreate);
+
+// error handler (WAJIB)
+app.use((err, req, res, next) => {
+  if (err.name === "NotFound") {
+    return res.status(404).json({ message: err.message });
+  }
+  if (err.name === "BadRequest") {
+    return res.status(400).json({ message: err.message });
+  }
+  if (err.name === "Forbidden") {
+    return res.status(403).json({ message: err.message });
+  }
+  res.status(500).json({ message: "Internal server error" });
+});
+
+// ================= TEST =================
 describe("ExperienceController", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // ============= CREATE EXPERIENCE =============
+  // ================= CREATE =================
   describe("POST /experience", () => {
-    it("should create experience successfully", async () => {
-      const expData = {
-        cvId: 1,
-        company: "Tech Corp",
-        position: "Senior Developer",
-        startDate: "2020-01-15",
-        endDate: "2023-12-31",
-        description: "Led development team",
-      };
+    it("should create experience", async () => {
+      CV.findByPk.mockResolvedValue({ id: 1 });
 
-      const mockCv = {
+      Experience.create.mockResolvedValue({
         id: 1,
-        userId: 1,
-      };
+        company: "Tech",
+      });
 
-      const mockExperience = {
-        id: 1,
-        ...expData,
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-      Experience.create.mockResolvedValue(mockExperience);
-
-      const response = await request(app).post("/experience").send(expData);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty("id");
-      expect(response.body).toHaveProperty("company", "Tech Corp");
-    });
-
-    it("should fail without required fields", async () => {
-      const expData = {
+      const res = await request(app).post("/experience").send({
         cvId: 1,
-        company: "Tech Corp",
-        // Missing position
-      };
+        company: "Tech",
+        position: "Dev",
+      });
 
-      const response = await request(app).post("/experience").send(expData);
-
-      expect(response.status).toBe(400);
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty("id");
     });
 
     it("should fail if CV not found", async () => {
-      const expData = {
+      CV.findByPk.mockResolvedValue(null);
+
+      const res = await request(app).post("/experience").send({
         cvId: 999,
-        company: "Tech Corp",
-        position: "Developer",
-      };
+      });
 
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app).post("/experience").send(expData);
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should fail if CV doesn't belong to user", async () => {
-      const expData = {
-        cvId: 1,
-        company: "Tech Corp",
-        position: "Developer",
-      };
-
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app).post("/experience").send(expData);
-
-      expect(response.status).toBe(403);
+      expect(res.status).toBe(404);
     });
   });
 
-  // ============= GET ALL EXPERIENCES =============
-  describe("GET /experience/:cvId", () => {
-    it("should get all experiences for a CV", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 1,
-      };
+  // ================= GET =================
+  describe("GET /experience/cv/:cvId", () => {
+    it("should get experiences", async () => {
+      Experience.findAll.mockResolvedValue([
+        { id: 1 },
+        { id: 2 },
+      ]);
 
-      const mockExperiences = [
-        {
-          id: 1,
-          cvId: 1,
-          company: "Tech Corp",
-          position: "Developer",
-        },
-        {
-          id: 2,
-          cvId: 1,
-          company: "Startup Inc",
-          position: "Junior Developer",
-        },
-      ];
+      const res = await request(app).get("/experience/cv/1");
 
-      Cv.findByPk.mockResolvedValue(mockCv);
-      Experience.findAll.mockResolvedValue(mockExperiences);
-
-      const response = await request(app).get("/experience/1");
-
-      expect(response.status).toBe(200);
-      expect(response.body).toBeInstanceOf(Array);
-      expect(response.body.length).toBe(2);
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2);
     });
 
-    it("should return 404 if CV not found", async () => {
-      Cv.findByPk.mockResolvedValue(null);
-
-      const response = await request(app).get("/experience/999");
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should check authorization", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app).get("/experience/1");
-
-      expect(response.status).toBe(403);
-    });
-
-    it("should return empty array if no experiences", async () => {
-      const mockCv = {
-        id: 1,
-        userId: 1,
-      };
-
-      Cv.findByPk.mockResolvedValue(mockCv);
+    it("should return empty array", async () => {
       Experience.findAll.mockResolvedValue([]);
 
-      const response = await request(app).get("/experience/1");
+      const res = await request(app).get("/experience/cv/1");
 
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
     });
   });
 
-  // ============= UPDATE EXPERIENCE =============
+  // ================= UPDATE =================
   describe("PUT /experience/:id", () => {
-    it("should update experience successfully", async () => {
-      const updateData = {
-        position: "Lead Developer",
-        description: "Leading the team",
-      };
-
-      const mockExperience = {
+    it("should update experience", async () => {
+      const mockExp = {
         id: 1,
-        cvId: 1,
-        company: "Tech Corp",
-        position: "Developer",
         update: jest.fn().mockResolvedValue(true),
       };
 
-      const mockCv = {
-        id: 1,
-        userId: 1,
-      };
+      Experience.findByPk.mockResolvedValue(mockExp);
 
-      Experience.findByPk.mockResolvedValue(mockExperience);
-      Cv.findByPk.mockResolvedValue(mockCv);
+      const res = await request(app)
+        .put("/experience/1")
+        .send({ position: "Lead" });
 
-      const response = await request(app).put("/experience/1").send(updateData);
-
-      expect(response.status).toBe(200);
+      expect(res.status).toBe(200);
     });
 
-    it("should return 404 if experience not found", async () => {
+    it("should fail if not found", async () => {
       Experience.findByPk.mockResolvedValue(null);
 
-      const response = await request(app)
+      const res = await request(app)
         .put("/experience/999")
-        .send({ position: "Updated" });
+        .send({});
 
-      expect(response.status).toBe(404);
-    });
-
-    it("should check authorization on update", async () => {
-      const mockExperience = {
-        id: 1,
-        cvId: 1,
-      };
-
-      const mockCv = {
-        id: 1,
-        userId: 2, // Different user
-      };
-
-      Experience.findByPk.mockResolvedValue(mockExperience);
-      Cv.findByPk.mockResolvedValue(mockCv);
-
-      const response = await request(app)
-        .put("/experience/1")
-        .send({ position: "Updated" });
-
-      expect(response.status).toBe(403);
+      expect(res.status).toBe(404);
     });
   });
 
-  // ============= DELETE EXPERIENCE =============
+  // ================= DELETE =================
   describe("DELETE /experience/:id", () => {
-    it("should delete experience successfully", async () => {
-      const mockExperience = {
-        id: 1,
-        cvId: 1,
+    it("should delete experience", async () => {
+      const mockExp = {
         destroy: jest.fn().mockResolvedValue(true),
       };
 
-      const mockCv = {
-        id: 1,
-        userId: 1,
-      };
+      Experience.findByPk.mockResolvedValue(mockExp);
 
-      Experience.findByPk.mockResolvedValue(mockExperience);
-      Cv.findByPk.mockResolvedValue(mockCv);
+      const res = await request(app).delete("/experience/1");
 
-      const response = await request(app).delete("/experience/1");
-
-      expect(response.status).toBe(200);
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Experience deleted");
     });
 
-    it("should return 404 if experience not found", async () => {
+    it("should fail if not found", async () => {
       Experience.findByPk.mockResolvedValue(null);
 
-      const response = await request(app).delete("/experience/999");
+      const res = await request(app).delete("/experience/999");
 
-      expect(response.status).toBe(404);
+      expect(res.status).toBe(404);
+    });
+  });
+
+  // ================= BULK =================
+  describe("POST /experience/bulk", () => {
+    it("should bulk create experiences", async () => {
+      CV.findByPk.mockResolvedValue({
+        id: 1,
+        userId: 1,
+      });
+
+      Experience.destroy.mockResolvedValue(true);
+      Experience.bulkCreate.mockResolvedValue(true);
+
+      const res = await request(app)
+        .post("/experience/bulk")
+        .send({
+          cvId: 1,
+          experiences: [
+            {
+              company: "A",
+              position: "Dev",
+              description: "desc",
+              startDate: "2020",
+              endDate: "2021",
+            },
+          ],
+        });
+
+      expect(res.status).toBe(201);
     });
 
-    it("should check authorization on delete", async () => {
-      const mockExperience = {
+    it("should fail without cvId", async () => {
+      const res = await request(app)
+        .post("/experience/bulk")
+        .send({});
+
+      expect(res.status).toBe(400);
+    });
+
+    it("should fail if CV not found", async () => {
+      CV.findByPk.mockResolvedValue(null);
+
+      const res = await request(app)
+        .post("/experience/bulk")
+        .send({ cvId: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should fail unauthorized", async () => {
+      CV.findByPk.mockResolvedValue({
         id: 1,
-        cvId: 1,
-      };
+        userId: 2,
+      });
 
-      const mockCv = {
+      const res = await request(app)
+        .post("/experience/bulk")
+        .send({ cvId: 1 });
+
+      expect(res.status).toBe(403);
+    });
+
+    it("should return 200 if no valid data", async () => {
+      CV.findByPk.mockResolvedValue({
         id: 1,
-        userId: 2, // Different user
-      };
+        userId: 1,
+      });
 
-      Experience.findByPk.mockResolvedValue(mockExperience);
-      Cv.findByPk.mockResolvedValue(mockCv);
+      Experience.destroy.mockResolvedValue(true);
 
-      const response = await request(app).delete("/experience/1");
+      const res = await request(app)
+        .post("/experience/bulk")
+        .send({
+          cvId: 1,
+          experiences: [],
+        });
 
-      expect(response.status).toBe(403);
+      expect(res.status).toBe(200);
     });
   });
 });

@@ -710,56 +710,25 @@ class CvController {
 
       if (!cv) throw { name: "NotFound", message: "CV Not Found" };
 
-      const now = Date.now();
-      const reviewKey = `${cv.id}:${cv.updatedAt?.toISOString()}`;
-      const cached = reviewCache.get(reviewKey);
-      if (cached && now - cached.createdAt < REVIEW_CACHE_TTL_MS) {
-        res.status(200).json({ review: cached.review });
-        return;
-      }
+      // Generate PDF buffer
+      const pdfBuffer = await generatePDFBuffer(cv);
 
-      const rateKey = String(req.user.id);
-      const rateState = reviewRateCache.get(rateKey);
-      if (!rateState || now > rateState.resetAt) {
-        reviewRateCache.set(rateKey, {
-          count: 1,
-          resetAt: now + REVIEW_RATE_WINDOW_MS,
-        });
-      } else if (rateState.count >= REVIEW_RATE_MAX) {
-        const waitMs = Math.max(rateState.resetAt - now, 0);
-        const waitSec = Math.ceil(waitMs / 1000);
-        throw {
-          name: "TooManyRequests",
-          message: `Terlalu sering review. Coba lagi dalam ${waitSec} detik.`,
-        };
-      } else {
-        rateState.count += 1;
-      }
-
-      // Generate PDF buffer (reuse logic dari downloadCV)
-      const pdfBuffer = await generatePDFBuffer(cv); // pisahkan jadi helper
-
-      // Kirim ke Gemini
+      // Kirim ke AI (Gemini)
       const review = await reviewCV(pdfBuffer);
-
-      reviewCache.set(reviewKey, { createdAt: now, review });
-      if (reviewCache.size > REVIEW_CACHE_MAX) {
-        const oldestKey = reviewCache.keys().next().value;
-        reviewCache.delete(oldestKey);
-      }
 
       res.status(200).json({ review });
     } catch (err) {
-      console.log("ERROR REVIEW:", err); // tambah ini
+      console.log("ERROR REVIEW:", err);
+
       const status = err?.status || err?.error?.code;
       if (status === 429) {
         next({
           name: "TooManyRequests",
-          message:
-            "Kuota Gemini habis. Coba lagi beberapa saat atau tambah billing.",
+          message: "Kuota AI habis. Coba lagi nanti atau upgrade billing.",
         });
         return;
       }
+
       next(err);
     }
   }

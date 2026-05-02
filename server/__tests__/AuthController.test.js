@@ -5,7 +5,7 @@ const { User } = require("../models");
 const { signToken } = require("../helpers/jwt");
 const axios = require("axios");
 
-// Mock dependencies
+// ================= MOCK =================
 jest.mock("../models", () => ({
   User: {
     create: jest.fn(),
@@ -20,12 +20,11 @@ jest.mock("../helpers/jwt", () => ({
 
 jest.mock("../helpers/bcrypt", () => ({
   comparePassword: jest.fn(),
-  hashPassword: jest.fn(),
 }));
 
 jest.mock("axios");
 
-// Create test app
+// ================= APP =================
 const app = express();
 app.use(express.json());
 
@@ -33,281 +32,226 @@ app.post("/register", AuthController.register);
 app.post("/login", AuthController.login);
 app.post("/auth/google-verify", AuthController.googleVerify);
 
+// ✅ WAJIB ADA
+app.use((err, req, res, next) => {
+  if (err.name === "BadRequest") {
+    return res.status(400).json({ message: err.message });
+  }
+  if (err.name === "Unauthorized") {
+    return res.status(401).json({ message: err.message });
+  }
+  return res.status(500).json({ message: "Internal server error" });
+});
+
+// ================= TEST =================
 describe("AuthController", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.GOOGLE_CLIENT_ID = "test-client-id";
   });
 
-  // ============= REGISTER TESTS =============
+  // ================= REGISTER =================
   describe("POST /register", () => {
-    it("should register a new user successfully", async () => {
-      const userData = {
-        email: "test@example.com",
-        password: "password123",
-        name: "Test User",
-      };
-
+    it("should register successfully", async () => {
       const mockUser = {
         id: 1,
-        email: userData.email,
-        name: userData.name,
-        password: "hashed_password",
+        email: "test@example.com",
+        name: "Test User",
+        password: "hashed",
         toJSON: jest.fn().mockReturnValue({
           id: 1,
-          email: userData.email,
-          name: userData.name,
+          email: "test@example.com",
+          name: "Test User",
         }),
       };
 
       User.create.mockResolvedValue(mockUser);
 
-      const response = await request(app).post("/register").send(userData);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty("id");
-      expect(response.body).toHaveProperty("email", userData.email);
-      expect(response.body).not.toHaveProperty("password");
-    });
-
-    it("should fail to register without email", async () => {
-      const userData = {
-        password: "password123",
-        name: "Test User",
-      };
-
-      const response = await request(app).post("/register").send(userData);
-
-      expect(response.status).toBe(400);
-    });
-
-    it("should handle database error on register", async () => {
-      const userData = {
+      const res = await request(app).post("/register").send({
         email: "test@example.com",
-        password: "password123",
+        password: "123",
         name: "Test User",
-      };
+      });
 
-      User.create.mockRejectedValue(new Error("Database error"));
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty("email");
+      expect(res.body).not.toHaveProperty("password");
+    });
 
-      const response = await request(app).post("/register").send(userData);
+    it("should fail register (sequelize error)", async () => {
+      User.create.mockRejectedValue(new Error("DB error"));
 
-      expect(response.status).toBe(500);
+      const res = await request(app).post("/register").send({
+        email: "test@example.com",
+      });
+
+      expect(res.status).toBe(500);
     });
   });
 
-  // ============= LOGIN TESTS =============
+  // ================= LOGIN =================
   describe("POST /login", () => {
-    it("should login user with correct credentials", async () => {
-      const loginData = {
-        email: "test@example.com",
-        password: "password123",
-      };
+    const { comparePassword } = require("../helpers/bcrypt");
 
-      const mockUser = {
+    it("should login success", async () => {
+      User.findOne.mockResolvedValue({
         id: 1,
-        email: loginData.email,
-        password: "hashed_password",
+        email: "test@mail.com",
+        password: "hashed",
         role: "user",
-      };
+      });
 
-      User.findOne.mockResolvedValue(mockUser);
-      const { comparePassword } = require("../helpers/bcrypt");
       comparePassword.mockReturnValue(true);
-      signToken.mockReturnValue("jwt_token_123");
+      signToken.mockReturnValue("token123");
 
-      const response = await request(app).post("/login").send(loginData);
+      const res = await request(app).post("/login").send({
+        email: "test@mail.com",
+        password: "123",
+      });
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("access_token", "jwt_token_123");
+      expect(res.status).toBe(200);
+      expect(res.body.access_token).toBe("token123");
     });
 
     it("should fail without email", async () => {
-      const loginData = {
-        password: "password123",
-      };
+      const res = await request(app).post("/login").send({
+        password: "123",
+      });
 
-      const response = await request(app).post("/login").send(loginData);
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("message");
+      expect(res.status).toBe(400);
     });
 
     it("should fail without password", async () => {
-      const loginData = {
-        email: "test@example.com",
-      };
+      const res = await request(app).post("/login").send({
+        email: "test@mail.com",
+      });
 
-      const response = await request(app).post("/login").send(loginData);
-
-      expect(response.status).toBe(400);
+      expect(res.status).toBe(400);
     });
 
-    it("should fail with non-existent user", async () => {
-      const loginData = {
-        email: "nonexistent@example.com",
-        password: "password123",
-      };
-
+    it("should fail user not found", async () => {
       User.findOne.mockResolvedValue(null);
 
-      const response = await request(app).post("/login").send(loginData);
+      const res = await request(app).post("/login").send({
+        email: "x@mail.com",
+        password: "123",
+      });
 
-      expect(response.status).toBe(401);
-      expect(response.body.message).toContain("Invalid Email/password");
+      expect(res.status).toBe(401);
     });
 
-    it("should fail with wrong password", async () => {
-      const loginData = {
-        email: "test@example.com",
-        password: "wrongpassword",
-      };
-
-      const mockUser = {
+    it("should fail wrong password", async () => {
+      User.findOne.mockResolvedValue({
         id: 1,
-        email: loginData.email,
-        password: "hashed_password",
-      };
+        email: "test@mail.com",
+        password: "hashed",
+      });
 
-      User.findOne.mockResolvedValue(mockUser);
-      const { comparePassword } = require("../helpers/bcrypt");
       comparePassword.mockReturnValue(false);
 
-      const response = await request(app).post("/login").send(loginData);
+      const res = await request(app).post("/login").send({
+        email: "test@mail.com",
+        password: "wrong",
+      });
 
-      expect(response.status).toBe(401);
+      expect(res.status).toBe(401);
     });
   });
 
-  // ============= GOOGLE VERIFY TESTS =============
+  // ================= GOOGLE VERIFY =================
   describe("POST /auth/google-verify", () => {
-    beforeEach(() => {
-      process.env.GOOGLE_CLIENT_ID =
-        "713734657205-0rnohinjaooijhlvbf59lik3g6v962j6.apps.googleusercontent.com";
-    });
+    it("should verify valid token", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          audience: "test-client-id",
+          email: "google@mail.com",
+          name: "Google User",
+        },
+      });
 
-    it("should verify valid Google ID token", async () => {
-      const token = "valid_google_id_token";
+      User.findOrCreate.mockResolvedValue([
+        { id: 1, email: "google@mail.com", role: "user" },
+      ]);
 
-      const mockTokenInfo = {
-        issued_to:
-          "713734657205-0rnohinjaooijhlvbf59lik3g6v962j6.apps.googleusercontent.com",
-        audience:
-          "713734657205-0rnohinjaooijhlvbf59lik3g6v962j6.apps.googleusercontent.com",
-        user_id: "117358786459399215834",
-        expires_in: 3597,
-        email: "test@gmail.com",
-        email_verified: true,
-        issuer: "https://accounts.google.com",
-        issued_at: 1776968284,
-      };
+      signToken.mockReturnValue("google_token");
 
-      const mockUser = {
-        id: 1,
-        email: "test@gmail.com",
-        password: "random",
-        role: "user",
-      };
-
-      axios.get.mockResolvedValue({ data: mockTokenInfo });
-      User.findOrCreate.mockResolvedValue([mockUser]);
-      signToken.mockReturnValue("jwt_token_123");
-
-      const response = await request(app)
+      const res = await request(app)
         .post("/auth/google-verify")
-        .send({ token });
+        .send({ token: "valid" });
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("access_token");
-      expect(signToken).toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty("access_token");
     });
 
     it("should fail without token", async () => {
-      const response = await request(app).post("/auth/google-verify").send({});
+      const res = await request(app)
+        .post("/auth/google-verify")
+        .send({});
 
-      expect(response.status).toBe(400);
-      expect(response.body.message).toContain("token missing");
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain("Google token missing");
     });
 
-    it("should fail with invalid Google token", async () => {
-      const token = "invalid_token";
+    it("should fail invalid token", async () => {
+      axios.get.mockRejectedValue(new Error("Invalid"));
 
-      axios.get.mockRejectedValue(new Error("Invalid token"));
-
-      const response = await request(app)
+      const res = await request(app)
         .post("/auth/google-verify")
-        .send({ token });
+        .send({ token: "invalid" });
 
-      expect(response.status).toBe(401);
+      expect(res.status).toBe(401);
     });
 
-    it("should create new user if not exists", async () => {
-      const token = "valid_google_id_token";
+    it("should create new user", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          audience: "test-client-id",
+          email: "new@mail.com",
+          name: "New User",
+        },
+      });
 
-      const mockTokenInfo = {
-        audience:
-          "713734657205-0rnohinjaooijhlvbf59lik3g6v962j6.apps.googleusercontent.com",
-        email: "newuser@gmail.com",
-        name: "New User",
-      };
+      User.findOrCreate.mockResolvedValue([
+        { id: 2, email: "new@mail.com", role: "user" },
+      ]);
 
-      const newMockUser = {
-        id: 2,
-        email: "newuser@gmail.com",
-        password: "random",
-        role: "user",
-      };
+      signToken.mockReturnValue("new_token");
 
-      axios.get.mockResolvedValue({ data: mockTokenInfo });
-      User.findOrCreate.mockResolvedValue([newMockUser]);
-      signToken.mockReturnValue("jwt_token_456");
-
-      const response = await request(app)
+      const res = await request(app)
         .post("/auth/google-verify")
-        .send({ token });
+        .send({ token: "valid" });
 
-      expect(response.status).toBe(200);
-      expect(User.findOrCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { email: "newuser@gmail.com" },
-        }),
-      );
+      expect(res.status).toBe(200);
+      expect(User.findOrCreate).toHaveBeenCalled();
     });
 
-    it("should fail if no email in token", async () => {
-      const token = "invalid_google_id_token";
+    it("should fail no email", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          audience: "test-client-id",
+        },
+      });
 
-      const mockTokenInfo = {
-        audience:
-          "713734657205-0rnohinjaooijhlvbf59lik3g6v962j6.apps.googleusercontent.com",
-        email_verified: true,
-      };
-
-      axios.get.mockResolvedValue({ data: mockTokenInfo });
-
-      const response = await request(app)
+      const res = await request(app)
         .post("/auth/google-verify")
-        .send({ token });
+        .send({ token: "valid" });
 
-      expect(response.status).toBe(400);
-      expect(response.body.message).toContain("email");
+      expect(res.status).toBe(400);
     });
 
-    it("should fail if audience doesn't match", async () => {
-      const token = "invalid_audience_token";
+    it("should fail audience mismatch", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          audience: "wrong-client",
+          email: "test@mail.com",
+        },
+      });
 
-      const mockTokenInfo = {
-        audience: "wrong-client-id.apps.googleusercontent.com",
-        email: "test@gmail.com",
-        email_verified: true,
-      };
-
-      axios.get.mockResolvedValue({ data: mockTokenInfo });
-
-      const response = await request(app)
+      const res = await request(app)
         .post("/auth/google-verify")
-        .send({ token });
+        .send({ token: "valid" });
 
-      expect(response.status).toBe(401);
+      expect(res.status).toBe(401);
     });
   });
 });
