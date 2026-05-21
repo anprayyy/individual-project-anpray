@@ -1866,4 +1866,4 @@ Implementasi rate limiting untuk mencegah abuse:
 
 **API Version**: 1.0.0
 
-**Contact**: development@cvbuilder.com
+**Contact**: anang1321@gmail.com
