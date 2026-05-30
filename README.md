@@ -1,36 +1,36 @@
 # individual-project-anpray
 individual project hck-094
 
-# Dokumentasi API - CV Builder Application
+# API Documentation - CV Builder Application
 
-## 📋 Daftar Isi
+## 📋 Table of Contents
 
-1. [Pendahuluan](#pendahuluan)
+1. [Introduction](#introduction)
 2. [Tech Stack](#tech-stack)
-3. [Setup & Konfigurasi](#setup--konfigurasi)
-4. [Autentikasi](#autentikasi)
-5. [Skema Database](#skema-database)
-6. [Endpoint API](#endpoint-api)
-7. [Format Response](#format-response)
-8. [Penanganan Error](#penanganan-error)
-9. [Contoh Penggunaan](#contoh-penggunaan)
+3. [Setup & Configuration](#setup--configuration)
+4. [Authentication](#authentication)
+5. [Database Schema](#database-schema)
+6. [API Endpoints](#api-endpoints)
+7. [Response Format](#response-format)
+8. [Error Handling](#error-handling)
+9. [Usage Examples](#usage-examples)
 
 ---
 
-## Pendahuluan
+## Introduction
 
-**CV Builder Application** adalah aplikasi web full-stack yang memungkinkan pengguna untuk membuat, mengedit, dan mengelola Curriculum Vitae (CV) mereka secara digital. Aplikasi ini mengintegrasikan berbagai teknologi modern untuk memberikan pengalaman pengguna yang seamless.
+**CV Builder Application** is a full-stack web application that allows users to create, edit, and manage their Curriculum Vitae (CV) digitally. The application integrates various modern technologies to provide a seamless user experience.
 
-### Fitur Utama:
+### Key Features:
 
-- 📝 **Autentikasi Pengguna**: Registrasi, login dengan email/password, dan OAuth (Google & GitHub)
-- 📄 **Manajemen CV**: Buat, baca, update, dan hapus CV
-- 💼 **Manajemen Pengalaman Kerja**: Tambah pengalaman kerja ke CV
-- 🤖 **AI Review**: Review CV menggunakan Gemini AI
-- 📥 **Upload PDF**: Upload CV dalam format PDF dan ekstrak data
-- 💾 **Download CV**: Unduh CV dalam format PDF
-- 🖼️ **Upload Foto**: Upload foto profil untuk CV
-- **Otorisasi**: Pengguna hanya bisa mengakses CV mereka sendiri
+- 📝 **User Authentication**: Registration, login with email/password, and OAuth (Google)
+- 📄 **CV Management**: Create, view, update, and delete CVs
+- 💼 **Work Experience Management**: Add work experience to CVs
+- 🤖 **AI Review**: Review CVs using Gemini AI
+- 📥 **Upload PDF**: Upload CVs in PDF format and extract data
+- 💾 **Download Resume**: Download your resume in PDF format
+- 🖼️ **Upload Photo**: Upload a profile photo for your resume
+- **Authorization**: Users can only access their own resumes
 
 ---
 
@@ -46,7 +46,7 @@ individual project hck-094
 - **File Upload**: Cloudinary, Multer
 - **PDF Generation**: Puppeteer
 - **AI Integration**: Google Gemini API
-- **OAuth**: Google OAuth 2.0, GitHub OAuth 2.0
+- **OAuth**: Google OAuth 2.0
 - **Testing**: Jest, Supertest
 
 ### Frontend
@@ -64,49 +64,49 @@ individual project hck-094
 
 ---
 
-## Setup & Konfigurasi
+## Setup & Configuration
 
-### Prasyarat
+### Prerequisites
 
-- Node.js (v16 atau lebih tinggi)
+- Node.js (v16 or higher)
 - PostgreSQL
-- npm atau yarn
+- npm or yarn
 
-### Instalasi Backend
+### Backend Installation
 
 ```bash
-# 1. Navigasi ke folder server
+# 1. Navigate to the server folder
 cd server
 
 # 2. Install dependencies
 npm install
 
-# 3. Buat file .env berdasarkan environment yang ada
+# 3. Create a .env file based on the existing environment
 cp .env.example .env
 
-# 4. Konfigurasi database di .env
+# 4. Configure the database in .env
 DATABASE_URL=postgresql://username:password@localhost:5432/db_cv_builder
 
-# 5. Jalankan migrasi
+# 5. Run migrations
 npm run migrate
 
-# 6. (Opsional) Jalankan seeder
+# 6. (Optional) Run the seeder
 npm run seed
 
-# 7. Jalankan aplikasi
+# 7. Run the application
 npm run dev
 ```
 
-### Instalasi Frontend
+### Frontend Installation
 
 ```bash
-# 1. Navigasi ke folder client
+# 1. Navigate to the client folder
 cd client
 
 # 2. Install dependencies
 npm install
 
-# 3. Jalankan development server
+# 3. Run the development server
 npm run dev
 ```
 
@@ -122,11 +122,6 @@ JWT_SECRET=your_jwt_secret_key
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# GitHub OAuth
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
 
 # Cloudinary
 CLOUDINARY_CLOUD_NAME=your_cloud_name
