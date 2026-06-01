@@ -1,6 +1,11 @@
 # individual-project-anpray
 individual project hck-094
 
+🌐 Live Demo: [https://cv-studio-three.vercel.app]
+
+📂 Repository: [https://github.com/anprayyy/individual-project-anpray]
+
+
 # API Documentation - CV Builder Application
 
 ## 📋 Table of Contents
