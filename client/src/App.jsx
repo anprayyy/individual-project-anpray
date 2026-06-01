@@ -8,6 +8,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import CVDetail from "./pages/CVDetail";
 import CVForm from "./pages/CVForm";
+import OAuthCallback from "./pages/OAuthCallback";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/create" element={<CVForm />} />
         <Route path="/edit/:id" element={<CVForm />} />
       </Route>
+      <Route path="/oauth-callback" element={<OAuthCallback />} />
     </Routes>
   );
 }
