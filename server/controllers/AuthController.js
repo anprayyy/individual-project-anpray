@@ -53,118 +53,10 @@ class AuthController {
         email: user.email,
         role: user.role,
       });
-      console.log(access_token);
 
       res.status(200).json({
         access_token: access_token,
       });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async githubLogin(req, res, next) {
-    try {
-      const clientId = process.env.GITHUB_CLIENT_ID;
-      const redirectUri = process.env.GITHUB_CALLBACK_URL;
-
-      if (!clientId || !redirectUri) {
-        throw {
-          name: "BadRequest",
-          message: "GitHub client ID or callback URL missing",
-        };
-      }
-
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        scope: "user:email",
-      });
-
-      res.redirect(
-        `https://github.com/login/oauth/authorize?${params.toString()}`,
-      );
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async githubCallback(req, res, next) {
-    try {
-      const { code } = req.query;
-      if (!code) {
-        throw { name: "BadRequest", message: "GitHub code missing" };
-      }
-
-      const clientId = process.env.GITHUB_CLIENT_ID;
-      const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-      const redirectUri = process.env.GITHUB_CALLBACK_URL;
-
-      if (!clientId || !clientSecret || !redirectUri) {
-        throw {
-          name: "BadRequest",
-          message: "GitHub OAuth env missing",
-        };
-      }
-
-      const tokenRes = await axios.post(
-        "https://github.com/login/oauth/access_token",
-        {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: redirectUri,
-        },
-        {
-          headers: { Accept: "application/json" },
-        },
-      );
-
-      const accessToken = tokenRes.data?.access_token;
-      if (!accessToken) {
-        throw { name: "Unauthorized", message: "GitHub token failed" };
-      }
-
-      const userRes = await axios.get("https://api.github.com/user", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      const emailsRes = await axios.get("https://api.github.com/user/emails", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      const emails = Array.isArray(emailsRes.data) ? emailsRes.data : [];
-      const primaryEmail = emails.find((item) => item.primary && item.verified);
-      const email =
-        primaryEmail?.email || userRes.data?.email || emails[0]?.email;
-
-      if (!email) {
-        throw { name: "BadRequest", message: "GitHub email not found" };
-      }
-
-      const displayName =
-        userRes.data?.name || userRes.data?.login || "GitHub User";
-
-      const [user] = await User.findOrCreate({
-        where: { email },
-        defaults: {
-          email,
-          name: displayName,
-          password: crypto.randomBytes(16).toString("hex"),
-        },
-      });
-
-      const access_token = signToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      });
-
-      const clientUrl = process.env.CLIENT_URL;
-      if (!clientUrl) {
-        throw { name: "BadRequest", message: "Client URL missing" };
-      }
-      res.redirect(`${clientUrl}/login?token=${access_token}`);
     } catch (err) {
       next(err);
     }
@@ -259,7 +151,13 @@ class AuthController {
       if (!clientUrl) {
         throw { name: "BadRequest", message: "Client URL missing" };
       }
-      res.redirect(`${clientUrl}/login?token=${access_token}`);
+      res.cookie("oauth_token", app_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+      res.redirect(`${clientUrl}/oauth-callback`);
     } catch (err) {
       next(err);
     }
@@ -278,18 +176,15 @@ class AuthController {
         throw { name: "BadRequest", message: "Google client ID missing" };
       }
 
-      console.log("Verifying token with client ID:", clientId);
 
       let userInfo = null;
 
       try {
         // Try verifying as ID token first
-        console.log("Attempting ID token verification...");
         const response = await axios.get(
           `https://www.googleapis.com/oauth2/v1/tokeninfo?id_token=${token}`,
         );
 
-        console.log("ID token verification successful:", response.data);
         userInfo = response.data;
 
         // Validate audience for ID token

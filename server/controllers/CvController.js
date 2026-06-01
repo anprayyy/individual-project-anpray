@@ -62,7 +62,8 @@ class CvController {
     try {
       const { id } = req.params;
 
-      const cv = await CV.findByPk(id, {
+      const cv = await CV.findOne({
+        where: { id, userId: req.user.id },
         include: [
           {
             model: User,
@@ -131,7 +132,6 @@ class CvController {
       const cvId = +req.params.id;
 
       const cv = await CV.findByPk(cvId);
-      console.log(cv);
 
       if (!cv) {
         throw {
@@ -325,7 +325,8 @@ class CvController {
     try {
       const { id } = req.params;
 
-      const cv = await CV.findByPk(id, {
+      const cv = await CV.findOne({
+        where: { id, userId: req.user.id },
         include: { model: Experience },
       });
 
