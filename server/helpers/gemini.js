@@ -44,7 +44,7 @@ Gunakan bahasa Indonesia yang profesional namun mudah dipahami.`, // prompt
   ];
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents,
   });
 
@@ -91,7 +91,7 @@ Jika ada field yang tidak ditemukan, isi string kosong atau array kosong.`,
   ];
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents,
   });
 
