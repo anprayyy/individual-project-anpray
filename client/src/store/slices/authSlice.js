@@ -15,7 +15,7 @@ export const loginUser = createAsyncThunk(
       const message = error.response?.data?.message || "Login failed";
       return rejectWithValue(message);
     }
-  }
+  },
 );
 
 export const googleLoginUser = createAsyncThunk(
@@ -30,7 +30,22 @@ export const googleLoginUser = createAsyncThunk(
         error.response?.data?.message || error.message || "Google login failed";
       return rejectWithValue(message);
     }
-  }
+  },
+);
+
+export const fetchOAuthToken = createAsyncThunk(
+  "auth/fetchOAuthToken",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.get(`${url}/auth/oauth-token`, {
+        withCredentials: true, // wajib untuk kirim cookie
+      });
+      localStorage.setItem("access_token", data.access_token);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  },
 );
 
 // ─── Slice ────────────────────────────────────────────────────────────────────

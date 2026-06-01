@@ -22,16 +22,6 @@ export default function Login() {
     password: "",
   });
 
-  // Handle token dari URL (OAuth redirect, e.g. GitHub)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    if (token) {
-      dispatch(setTokenFromUrl(token));
-      navigate("/", { replace: true });
-    }
-  }, [navigate, dispatch]);
-
   // Redirect kalau sudah login
   const token = useSelector((state) => state.auth.token);
   useEffect(() => {
@@ -154,16 +144,6 @@ export default function Login() {
                 {loading ? "Logging in..." : "Login"}
               </button>
 
-              <div className="grid gap-3">
-                <button
-                  type="button"
-                  onClick={() => (window.location.href = `${url}/auth/github`)}
-                  disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  Login with GitHub
-                </button>
-
                 <div className="flex justify-center overflow-hidden">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
@@ -172,7 +152,6 @@ export default function Login() {
                     width={320}
                   />
                 </div>
-              </div>
             </form>
 
             <p className="text-sm text-slate-500 mt-6 text-center">
